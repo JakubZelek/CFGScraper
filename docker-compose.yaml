@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: ${ELASTIC_IMAGE}
+    container_name: ${ELASTIC_CONTAINER}
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "${ELASTIC_HOST}:9200"
+    volumes:
+      - "${ELASTIC_VOLUME}:/usr/share/elasticsearch/data"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kibana:
+    image: ${KIBANA_IMAGE}
+    container_name: ${KIBANA_CONTAINER}
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "${KIBANA_HOST}:5601"
+    depends_on:
+      - elasticsearch
+
+  kafka:
+    image: ${KAFKA_IMAGE}
+    container_name: ${KAFKA_CONTAINER}
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_LOG_DIRS=/tmp/kafka-logs
+    ports:
+      - "${KAFKA_HOST}:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  url-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.UrlApp
+    container_name: url-api
+    ports:
+      - "${URL_API_HOST}:8000"
+    environment:
+      KAFKA_HOST: kafka:${KAFKA_HOST}
+      ELASTIC_HOST: http://elasticsearch:${ELASTIC_HOST}
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      ELASTIC_INDEX: ${ELASTIC_INDEX}
+      LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
+      APP_NAME: ${APP_NAME}
+
+    
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
