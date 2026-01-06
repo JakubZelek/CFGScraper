@@ -1,8 +1,7 @@
 import json
 import networkx as nx
 from networkx.algorithms import isomorphism
-from elasticsearch import AsyncElasticsearch
-from common.elastic_queries.queries import check_isomorphism_query
+from elasticsearch import AsyncElasticsearch, NotFoundError
 
 
 class ElasticSearchManager:
@@ -23,28 +22,49 @@ class ElasticSearchManager:
 
     async def delete_repo_info(self, index: str, repo_url: str):
         await self.elasticsearch.delete(index=index, id=repo_url)
+    
+    async def insert_document(self, index: str, repo_url: str, document: dict):
+        await self.elasticsearch.index(index=index, id=repo_url, document=document)
 
     async def get_isomorphic_graph_id(
-        self, graph: nx.Graph, index: str, scroll_size: int = 10000
+        self, graph: dict, index: str, scroll_size: int = 10000
     ) -> str | None:
-        query = check_isomorphism_query(
-            graph["num_edges"], graph["out_degrees"], graph["in_degrees"]
-        )
+        try:
+            query = self.check_isomorphism_query(
+                out_degrees=graph["out_degrees"],
+                in_degrees=graph["in_degrees"]
+            )
 
-        response = await self.elasticsearch.search(
-            index=index, body=query, scroll="2m", size=scroll_size
-        )
-        scroll_id = response.get("_scroll_id")
-        
-        while len(response["hits"]["hits"]) > 0:
-            for hit in response["hits"]["hits"]:
-                candidate_data = json.loads(hit["_source"]["graph"])
-                isomorphism_candidate = nx.DiGraph(candidate_data)
+            response = await self.elasticsearch.search(
+                index=index, body=query, scroll="2m", size=scroll_size
+            )
+            scroll_id = response.get("_scroll_id")
+            
+            while len(response["hits"]["hits"]) > 0:
+                for hit in response["hits"]["hits"]:
+                    candidate_data = json.loads(hit["_source"]["graph_dict"])
+                    isomorphism_candidate = nx.DiGraph(candidate_data)
 
-                matcher = isomorphism.DiGraphMatcher(graph, isomorphism_candidate)
-                if matcher.is_isomorphic():
-                    return hit["_id"]
+                    matcher = isomorphism.DiGraphMatcher(nx.DiGraph(json.loads(graph["graph_dict"])), isomorphism_candidate)
+                    if matcher.is_isomorphic():
+                        return hit["_id"]
 
-            response = await self.elasticsearch.scroll(scroll_id=scroll_id, scroll="2m")
+                response = await self.elasticsearch.scroll(scroll_id=scroll_id, scroll="2m")
 
-        return None
+            return None
+        except NotFoundError:
+            return None
+    
+    @staticmethod
+    def check_isomorphism_query(out_degrees: str, in_degrees: str):
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"out_degrees.keyword": out_degrees}},
+                        {"term": {"in_degrees.keyword": in_degrees}},
+                    ]
+                }
+            }
+        }
+        return query

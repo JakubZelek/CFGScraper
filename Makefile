@@ -2,5 +2,5 @@
 
 rebuild:
 	docker compose down -v --rmi all
-	docker build --no-cache -t url-app -f Dockerfile.UrlApp .
+	docker compose build --no-cache url-api cfg-processor
 	docker compose up -d

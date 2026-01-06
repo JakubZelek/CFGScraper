@@ -7,11 +7,15 @@ license = "MIT"
 
 packages = [
     { include = "common", from = "src" },
-    { include = "url_app", from = "src" }
+    { include = "url_app", from = "src" },
+    { include = "processors", from = "src" },
+    { include = "language_scrapers", from = "src" },
+    { include = "elastic_upload", from = "src" }
 ]
 
 [tool.poetry.dependencies]
 kafka-python = "2.0.2"
+bytecode = "0.16.2"
 pydantic-settings = "2.12.0"
 uvicorn = "0.23.0"
 python = "^3.11"

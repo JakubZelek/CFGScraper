@@ -1,24 +1,22 @@
 import json
 from kafka import KafkaProducer, KafkaConsumer
-from kafka.admin import KafkaAdminClient
 
 
-KAFKA_GROUP = "cfg_group"
+KAFKA_GROUP = "cfg_group_v2"
 AUTO_OFFSET_RESET = "earliest"
 
 class KafkaProducerManager:
     def __init__(self, kafka_broker: str):
-        self.admin_client = KafkaAdminClient(bootstrap_servers=kafka_broker)
         self.producer = KafkaProducer(
             bootstrap_servers=kafka_broker,
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         )
 
+    def push_to_the_topic(self, topic: str, message: dict):
+        future = self.producer.send(topic, message)
+        return future
 
-    async def push_to_the_topic(self, topic: str, message: dict):
-        self.producer.send(topic, message)
-
-    async def flush(self):
+    def flush(self):
         self.producer.flush()
 
 class KafkaConsumerManager:
@@ -33,5 +31,8 @@ class KafkaConsumerManager:
         )
 
     def get_messages(self):
-        for message in self.consumer:
-            yield message.value
+        while True:
+            records = self.consumer.poll(timeout_ms=1000)
+            for _, messages in records.items():
+                for message in messages:
+                    yield message.value

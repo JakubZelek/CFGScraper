@@ -40,6 +40,10 @@ services:
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
       - KAFKA_LOG_DIRS=/tmp/kafka-logs
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk
     ports:
       - "${KAFKA_HOST}:9092"
     healthcheck:
@@ -62,10 +66,46 @@ services:
       ELASTIC_INDEX: ${ELASTIC_INDEX}
       LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
       APP_NAME: ${APP_NAME}
-
-    
     depends_on:
       kafka:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+
+  cfg-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile.CfgProcessor
+    container_name: cfg-processor
+    volumes:
+      - /repos
+    environment:
+      LANGUAGE: ${CFG_LANGUAGE}
+      EXTENTION: ${CFG_EXTENTION}
+      KAFKA_BROKER: kafka:9092
+      GRAPH_KAFKA_TOPIC: ${GRAPH_KAFKA_TOPIC}
+      LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
+      REPO_SCRIPT: ${CFG_REPO_SCRIPT}
+      CFG_BUILD_SCRIPT: ${CFG_BUILD_SCRIPT}
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  elasticsearch-upload:
+    build:
+      context: .
+      dockerfile: Dockerfile.ElasticsearchUpload
+    container_name: elasticsearch-upload
+    environment:
+      KAFKA_BROKER: kafka:${ELASTIC_UPLOAD_KAFKA_HOST}
+      KAFKA_TOPIC: ${ELASTIC_UPLOAD_KAFKA_TOPIC}
+      ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
+      ISOMORPHISM_INDEX: ${ELASTIC_UPLOAD_ISOMORPHISM_INDEX}
+      CFG_INDEX: ${ELASTIC_UPLOAD_CFG_INDEX}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+
