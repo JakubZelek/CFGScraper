@@ -87,6 +87,8 @@ services:
       LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
       REPO_SCRIPT: ${CFG_REPO_SCRIPT}
       CFG_BUILD_SCRIPT: ${CFG_BUILD_SCRIPT}
+      ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
+      ERROR_INDEX: ${ERROR_INDEX}
     depends_on:
       kafka:
         condition: service_healthy
@@ -102,6 +104,7 @@ services:
       ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
       ISOMORPHISM_INDEX: ${ELASTIC_UPLOAD_ISOMORPHISM_INDEX}
       CFG_INDEX: ${ELASTIC_UPLOAD_CFG_INDEX}
+      ERROR_INDEX: ${ERROR_INDEX}
     depends_on:
       kafka:
         condition: service_healthy

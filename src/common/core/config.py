@@ -22,11 +22,14 @@ class CfgProcessorSettings(BaseSettings):
     language_topics: str
     repo_script: str
     cfg_build_script: str
+    elastic_host: str
+    error_index: str
 
 
 class ElasticUploadSettings(BaseSettings):
     kafka_broker: str
     isomorphism_index: str
     cfg_index: str
+    error_index: str
     kafka_topic: str
     elastic_host: str

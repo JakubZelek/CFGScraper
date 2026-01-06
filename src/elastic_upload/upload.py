@@ -2,6 +2,8 @@ import asyncio
 import json
 import hashlib
 import logging
+import traceback
+from datetime import datetime, timezone
 from common.managers.kafka import KafkaConsumerManager
 from common.managers.elastic import ElasticSearchManager
 from common.core.config import ElasticUploadSettings
@@ -11,6 +13,7 @@ elastic_upload_settings = ElasticUploadSettings()
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
+logger = logging.getLogger(__name__)
 
 def yield_single_graph_to_be_loaded_to_elasticsearch(cfg_message :str):
     global_template = {
@@ -31,26 +34,42 @@ async def upload_to_elasticsearch():
     kafka_consumer = KafkaConsumerManager(kafka_topic=elastic_upload_settings.kafka_topic, kafka_broker=elastic_upload_settings.kafka_broker)
 
     for message in kafka_consumer.get_messages():
-        for graph_id, graph_data in yield_single_graph_to_be_loaded_to_elasticsearch(message):
+        try:
+            for graph_id, graph_data in yield_single_graph_to_be_loaded_to_elasticsearch(message):
 
-            graph_data["graph_dict"] = json.dumps(graph_data["graph_dict"])
-            found_isomorphism = await elastic_manager.get_isomorphic_graph_id(
-                graph=graph_data,
-                index=elastic_upload_settings.cfg_index
+                graph_data["graph_dict"] = json.dumps(graph_data["graph_dict"])
+                found_isomorphism = await elastic_manager.get_isomorphic_graph_id(
+                    graph=graph_data,
+                    index=elastic_upload_settings.cfg_index
+                )
+
+                if found_isomorphism:
+                    isomorphism_data = {
+                        "isomorphic_to": found_isomorphism,
+                        "filepath": graph_data["filepath"],
+                        "commit_hash": graph_data["commit_hash"],
+                        "repo_url": graph_data["repo_url"],
+                        "language": graph_data["language"],
+                        "name": graph_data["name"],
+                    }
+                    await elastic_manager.insert_document(elastic_upload_settings.isomorphism_index, graph_id, isomorphism_data)
+                else:
+                    await elastic_manager.insert_document(elastic_upload_settings.cfg_index, graph_id, graph_data)
+        except Exception as e:
+            logger.error(f"Failed to process message: {e}")
+            error_doc = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "service": "elasticsearch_upload",
+                "message": str(message),
+                "error": str(e),
+                "traceback": traceback.format_exc(),
+            }
+            await elastic_manager.insert_document(
+                elastic_upload_settings.error_index,
+                f"upload_{datetime.now(timezone.utc).timestamp()}",
+                error_doc
             )
-
-            if found_isomorphism:
-                isomorphism_data = {
-                    "isomorphic_to": found_isomorphism,
-                    "filepath": graph_data["filepath"],
-                    "commit_hash": graph_data["commit_hash"],
-                    "repo_url": graph_data["repo_url"],
-                    "language": graph_data["language"],
-                    "name": graph_data["name"],
-                }
-                await elastic_manager.insert_document(elastic_upload_settings.isomorphism_index, graph_id, isomorphism_data)
-            else:
-                await elastic_manager.insert_document(elastic_upload_settings.cfg_index, graph_id, graph_data)
+            continue
 
 if __name__ == "__main__":
     asyncio.run(upload_to_elasticsearch())
