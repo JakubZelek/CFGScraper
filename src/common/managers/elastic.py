@@ -29,6 +29,7 @@ class ElasticSearchManager:
     async def get_isomorphic_graph_id(
         self, graph: dict, index: str, scroll_size: int = 10000
     ) -> str | None:
+        scroll_id = None
         try:
             query = self.check_isomorphism_query(
                 out_degrees=graph["out_degrees"],
@@ -36,24 +37,42 @@ class ElasticSearchManager:
             )
 
             response = await self.elasticsearch.search(
-                index=index, body=query, scroll="2m", size=scroll_size
+                index=index,
+                body=query,
+                scroll="2m",
+                size=scroll_size
             )
+
             scroll_id = response.get("_scroll_id")
-            
-            while len(response["hits"]["hits"]) > 0:
+
+            while response["hits"]["hits"]:
                 for hit in response["hits"]["hits"]:
                     candidate_data = json.loads(hit["_source"]["graph_dict"])
                     isomorphism_candidate = nx.DiGraph(candidate_data)
 
-                    matcher = isomorphism.DiGraphMatcher(nx.DiGraph(json.loads(graph["graph_dict"])), isomorphism_candidate)
+                    matcher = isomorphism.DiGraphMatcher(
+                        nx.DiGraph(json.loads(graph["graph_dict"])),
+                        isomorphism_candidate
+                    )
+
                     if matcher.is_isomorphic():
                         return hit["_id"]
 
-                response = await self.elasticsearch.scroll(scroll_id=scroll_id, scroll="2m")
+                response = await self.elasticsearch.scroll(
+                    scroll_id=scroll_id,
+                    scroll="2m"
+                )
+                scroll_id = response.get("_scroll_id")
 
             return None
+
         except NotFoundError:
             return None
+
+        finally:
+            if scroll_id:
+                await self.elasticsearch.clear_scroll(scroll_id=scroll_id)
+
     
     @staticmethod
     def check_isomorphism_query(out_degrees: str, in_degrees: str):

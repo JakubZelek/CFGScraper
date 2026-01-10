@@ -75,7 +75,7 @@ def parse_cfg_to_graphs(
             graph = get_cfg_dict(cfg)
             if len(graph) > 1:
                 current_graph = {"name": name,
-                                 "graph": graph}
+                                 "graph_dict": graph}
                 
                 graphs["graphs"].append(current_graph)
 

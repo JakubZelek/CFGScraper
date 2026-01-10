@@ -42,13 +42,8 @@ async def cfg_processor():
                 control_flow_graphs = repository_manager.generate_cfg_from_file(
                     filename, cfg_build_script=cfg_processor_settings.cfg_build_script
                 )
-                control_flow_graphs["commit_hash"] = commit_hash
-                control_flow_graphs["filepath"] = str(filename)
-                control_flow_graphs["repo_url"] = url
-                control_flow_graphs["language"] = cfg_processor_settings.language
-                graph_list = [Graph(name=g["name"], graph_dict=g["graph"], other_graph_info=None) for g in control_flow_graphs["graphs"]]
-
-                logger.info(f"Graphs generated : {control_flow_graphs}")
+                logger.info(f"Control flow graphs: {control_flow_graphs}")
+                graph_list = [Graph(name=g["name"], graph_dict=g["graph_dict"], other_graph_info=g.get("other_graph_info")) for g in control_flow_graphs["graphs"]]
                 
                 graph_batch = GraphBatch(filepath=str(filename), commit_hash=commit_hash, repo_url=url, language=cfg_processor_settings.language, graph_list=graph_list)
                 kafka_producer.push_to_the_topic(cfg_processor_settings.graph_kafka_topic, graph_batch.model_dump())

@@ -72,25 +72,53 @@ services:
       elasticsearch:
         condition: service_healthy
 
-  cfg-processor:
+  cfg-processor-python:
     build:
       context: .
-      dockerfile: Dockerfile.CfgProcessor
+      dockerfile: Dockerfile.CfgProcessorPython
     container_name: cfg-processor
     volumes:
-      - /repos
+      - /repos_python
     environment:
-      LANGUAGE: ${CFG_LANGUAGE}
-      EXTENTION: ${CFG_EXTENTION}
+      LANGUAGE: ${PYTHON_CFG_LANGUAGE}
+      EXTENTION: ${PYTHON_CFG_EXTENTION}
       KAFKA_BROKER: kafka:9092
-      GRAPH_KAFKA_TOPIC: ${GRAPH_KAFKA_TOPIC}
+      GRAPH_KAFKA_TOPIC: ${PYTHON_GRAPH_KAFKA_TOPIC}
       LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
-      REPO_SCRIPT: ${CFG_REPO_SCRIPT}
-      CFG_BUILD_SCRIPT: ${CFG_BUILD_SCRIPT}
+      REPO_SCRIPT: ${PYTHON_CFG_REPO_SCRIPT}
+      CFG_BUILD_SCRIPT: ${PYTHON_CFG_BUILD_SCRIPT}
       ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
-      ERROR_INDEX: ${ERROR_INDEX}
+      ERROR_INDEX: ${PYTHON_ERROR_INDEX}
     depends_on:
       kafka:
+        condition: service_healthy  
+      elasticsearch:
+        condition: service_healthy
+
+# CFG Processor settings (CPP)
+
+
+  cfg-processor-cpp:
+    build:
+      context: .
+      dockerfile: Dockerfile.CfgProcessorCpp
+    container_name: cfg-processor-cpp
+    volumes:
+      - /repos_cpp
+    environment:
+      LANGUAGE: ${CPP_CFG_LANGUAGE}
+      EXTENTION: ${CPP_CFG_EXTENTION}
+      KAFKA_BROKER: kafka:9092
+      GRAPH_KAFKA_TOPIC: ${CPP_GRAPH_KAFKA_TOPIC}
+      LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
+      REPO_SCRIPT: ${CPP_CFG_REPO_SCRIPT}
+      CFG_BUILD_SCRIPT: ${CPP_CFG_BUILD_SCRIPT}
+      ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
+      ERROR_INDEX: ${CPP_ERROR_INDEX}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
 
   elasticsearch-upload:
