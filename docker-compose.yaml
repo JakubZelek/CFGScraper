@@ -1,5 +1,6 @@
 version: '3.8'
 
+# Elasticsearch
 services:
   elasticsearch:
     image: ${ELASTIC_IMAGE}
@@ -18,6 +19,7 @@ services:
       timeout: 5s
       retries: 10
 
+# Kibana
   kibana:
     image: ${KIBANA_IMAGE}
     container_name: ${KIBANA_CONTAINER}
@@ -28,6 +30,7 @@ services:
     depends_on:
       - elasticsearch
 
+# Kafka
   kafka:
     image: ${KAFKA_IMAGE}
     container_name: ${KAFKA_CONTAINER}
@@ -52,6 +55,7 @@ services:
       timeout: 5s
       retries: 5
 
+# Url Api
   url-api:
     build:
       context: .
@@ -62,8 +66,8 @@ services:
     environment:
       KAFKA_HOST: kafka:${KAFKA_HOST}
       ELASTIC_HOST: http://elasticsearch:${ELASTIC_HOST}
-      KAFKA_TOPIC: ${KAFKA_TOPIC}
-      ELASTIC_INDEX: ${ELASTIC_INDEX}
+      URL_KAFKA_TOPIC: ${URL_KAFKA_TOPIC}
+      REPOS_INDEX: ${REPOS_INDEX}
       LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
       APP_NAME: ${APP_NAME}
     depends_on:
@@ -72,23 +76,23 @@ services:
       elasticsearch:
         condition: service_healthy
 
+# CFG Processor settings (Python)
   cfg-processor-python:
     build:
       context: .
       dockerfile: Dockerfile.CfgProcessorPython
     container_name: cfg-processor
-    volumes:
-      - /repos_python
     environment:
       LANGUAGE: ${PYTHON_CFG_LANGUAGE}
-      EXTENTION: ${PYTHON_CFG_EXTENTION}
-      KAFKA_BROKER: kafka:9092
-      GRAPH_KAFKA_TOPIC: ${PYTHON_GRAPH_KAFKA_TOPIC}
+      EXTENSION: ${PYTHON_CFG_EXTENSION}
+      KAFKA_BROKER: kafka:${KAFKA_HOST}
+      GRAPH_KAFKA_TOPIC: ${GRAPH_KAFKA_TOPIC}
       LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
       REPO_SCRIPT: ${PYTHON_CFG_REPO_SCRIPT}
       CFG_BUILD_SCRIPT: ${PYTHON_CFG_BUILD_SCRIPT}
-      ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
-      ERROR_INDEX: ${PYTHON_ERROR_INDEX}
+      ELASTIC_HOST: http://elasticsearch:${ELASTIC_HOST}
+      ERROR_INDEX: ${ERROR_INDEX}
+      REPO_FOLDER: ${PYTHON_REPO_FOLDER}
     depends_on:
       kafka:
         condition: service_healthy  
@@ -96,47 +100,46 @@ services:
         condition: service_healthy
 
 # CFG Processor settings (CPP)
-
-
   cfg-processor-cpp:
     build:
       context: .
       dockerfile: Dockerfile.CfgProcessorCpp
     container_name: cfg-processor-cpp
-    volumes:
-      - /repos_cpp
     environment:
       LANGUAGE: ${CPP_CFG_LANGUAGE}
-      EXTENTION: ${CPP_CFG_EXTENTION}
-      KAFKA_BROKER: kafka:9092
-      GRAPH_KAFKA_TOPIC: ${CPP_GRAPH_KAFKA_TOPIC}
+      EXTENSION: ${CPP_CFG_EXTENSION}
+      KAFKA_BROKER: kafka:${KAFKA_HOST}
+      GRAPH_KAFKA_TOPIC: ${GRAPH_KAFKA_TOPIC}
       LANGUAGE_TOPICS: ${LANGUAGE_TOPICS}
       REPO_SCRIPT: ${CPP_CFG_REPO_SCRIPT}
       CFG_BUILD_SCRIPT: ${CPP_CFG_BUILD_SCRIPT}
-      ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
-      ERROR_INDEX: ${CPP_ERROR_INDEX}
+      ELASTIC_HOST: http://elasticsearch:${ELASTIC_HOST}
+      ERROR_INDEX: ${ERROR_INDEX}
+      LOGGING_TO_ELASTIC: ${LOGGING_TO_ELASTIC}
+      REPO_FOLDER: ${CPP_REPO_FOLDER}
+
     depends_on:
       kafka:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
 
+# Elasticsearch Upload
   elasticsearch-upload:
     build:
       context: .
       dockerfile: Dockerfile.ElasticsearchUpload
     container_name: elasticsearch-upload
     environment:
-      KAFKA_BROKER: kafka:${ELASTIC_UPLOAD_KAFKA_HOST}
-      KAFKA_TOPIC: ${ELASTIC_UPLOAD_KAFKA_TOPIC}
-      ELASTIC_HOST: http://elasticsearch:${ELASTIC_UPLOAD_ELASTIC_HOST}
-      ISOMORPHISM_INDEX: ${ELASTIC_UPLOAD_ISOMORPHISM_INDEX}
-      CFG_INDEX: ${ELASTIC_UPLOAD_CFG_INDEX}
+      KAFKA_BROKER: kafka:${KAFKA_HOST}
+      GRAPH_KAFKA_TOPIC: ${GRAPH_KAFKA_TOPIC}
+      ELASTIC_HOST: http://elasticsearch:${ELASTIC_HOST}
+      CFG_ISOMORPHISM_INDEX: ${CFG_ISOMORPHISM_INDEX}
+      CFG_INDEX: ${CFG_INDEX}
       ERROR_INDEX: ${ERROR_INDEX}
+      
     depends_on:
       kafka:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-
-

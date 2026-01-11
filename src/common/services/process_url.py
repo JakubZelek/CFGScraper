@@ -1,17 +1,17 @@
 import logging
 from common.schemas.url_app import RepoUrl, RepoUrlList
-from common.managers.elastic import ElasticSearchManager
+from common.managers.elastic import AsyncElasticSearchManager
 from common.managers.kafka import KafkaProducerManager
-from common.core.config import UrlAppSettings
+from common.config.url_app_settings import UrlAppSettings
 
 logger = logging.getLogger(__name__)
 
 
 class ProcessUrlService:
-    def __init__(self, elastic_manager: ElasticSearchManager, kafka_manager: KafkaProducerManager, url_app_settings: UrlAppSettings):
+    def __init__(self, elastic_manager: AsyncElasticSearchManager, kafka_manager: KafkaProducerManager, url_app_settings: UrlAppSettings):
         self.kafka_manager = kafka_manager
         self.elastic_manager = elastic_manager
-        self.elastic_repository_index = url_app_settings.elastic_index
+        self.elastic_repository_index = url_app_settings.repos_index
         self.language_topics_list = url_app_settings.language_topics_list()
 
     async def scrap_single_repo(self, repo_input: RepoUrl):
@@ -32,7 +32,7 @@ class ProcessUrlService:
         await self.elastic_manager.insert_repo_info(self.elastic_repository_index, repo_input.url)
         self.kafka_manager.flush()
     
-        return {"status": "repo processed"}
+        return {"status": "repo sent to queue"}
         
 
     async def scrap_multiple_repos(self, repo_input: RepoUrlList):
@@ -55,4 +55,4 @@ class ProcessUrlService:
                 repos_already_exists.append(url)
 
         self.kafka_manager.flush()
-        return {"status": {"repos_processed": repos_processed, "repos_already_exists": repos_already_exists}}
+        return {"status": {"repos_sent_to_queue": repos_processed, "repos_already_exists": repos_already_exists}}

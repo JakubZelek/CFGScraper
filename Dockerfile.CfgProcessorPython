@@ -13,4 +13,3 @@ RUN pip install .
 ENV PYTHONUNBUFFERED=1
 
 CMD ["python", "-m", "processors.cfg_processor"]
-

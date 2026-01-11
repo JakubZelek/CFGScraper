@@ -28,10 +28,19 @@ class RepositoryManager:
             yield filename
 
     def generate_cfg_from_file(self, filename: str, cfg_build_script: str):
-        control_flow_graphs = subprocess.run(
-            [cfg_build_script, filename], capture_output=True, text=True, check=True
-        )
-        return json.loads(control_flow_graphs.stdout)
+        try:
+            result = subprocess.run(
+                [cfg_build_script, filename],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return json.loads(result.stdout)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"CFG build failed for {filename}:\n{e.stderr}"
+            ) from e
+
 
     def rm(self, repo_dir):
         subprocess.run(["rm", "-rf", repo_dir], check=True)

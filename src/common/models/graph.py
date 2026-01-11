@@ -1,4 +1,3 @@
-import hashlib
 from typing import Optional
 from pydantic import BaseModel, ValidationError, model_validator, field_validator
 
@@ -9,7 +8,7 @@ class Graph(BaseModel):
     in_degrees: Optional[str] = None
     out_degrees: Optional[str] = None
     other_graph_info: Optional[dict] = None
-    
+
 
     @field_validator("graph_dict", mode="before")
     @classmethod
@@ -37,7 +36,7 @@ class Graph(BaseModel):
                 for neighbor in neighbors:
                     degrees[neighbor] = degrees.get(neighbor, 0) + 1
             self.in_degrees = str(sorted([degrees[node] for node in self.graph_dict]))        
-        
+
         return self
 
 

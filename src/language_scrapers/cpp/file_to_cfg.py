@@ -83,7 +83,7 @@ def parse_cfg_to_graphs(lines: list[str]):
             if header and current_graph:
                 current_graph = migrate_other_info_to_separate_field(current_graph)
                 graphs["graphs"].append(current_graph)
-            
+
             header = line.replace("\n", "")
             current_graph = {}
             continue
@@ -133,4 +133,5 @@ with open(COMPILE_COMMANDS_PATH, "r", encoding="utf-8") as f:
 
 lines = get_raw_cfg(FILEPATH, compile_commands)
 result = parse_cfg_to_graphs(lines)
+
 print(json.dumps(result))
